@@ -82,6 +82,8 @@ You will now be ready to move to the next step.
 
 #### Execution 
 
+First make sure no firewall is running (or one is properly configured to allow MQTT and iotivity-related traffic and especially multicast traffic) on the machine(s) where these applications are running.
+
 1. Go to the root directory of `mqtt-ocf.js`, open a shell terminal, execute `node mqtt-ocf.js` OR if interested in watching closely what is going on then `NODE_DEBUG=ocf_mqtt node mqtt-ocf.js`
    Don't ask me why the `ocf_mqtt` identifier is used, just how it was started in the `debuglog` statements.   Can be changed effortlessly. 
 2. Now `cd js`. Each of the following will need its own terminal or tab.  
@@ -101,11 +103,7 @@ You will now be ready to move to the next step.
 
 That is. We have now a fully versatile system that interconnects MQTT and OCF Worlds! 
 
-A handy tool that helped me in the development was the client program of the IoTivity package . 
-
-To run them, open two terminals and change directory to the root of the iotivity-node repository in both. Always launch the server before the client. For example, in one terminal you can run `node js/server.discoverable.js` and in the other terminal you can run `node js/client.discovery.js`.
-
-Make sure no firewall is running (or one is properly configured to allow iotivity-related traffic and especially multicast traffic) on the machine(s) where these applications are running.
+A handy tool that helped me in the development was the [OCFSecure/client](https://github.com/iotivity/iotivity/blob/master/examples/OCFSecure/client.c) program of the IoTivity package. 
 
 ## Acknowledgements
 
