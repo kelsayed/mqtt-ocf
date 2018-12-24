@@ -101,7 +101,7 @@ First make sure no firewall is running (or one is properly configured to allow M
    `node  client.periodicput.coaps.js /a/mqtt/TestOcfTopic 100`
    The second MQTT subscriber shall now get the updates posted by the OCF Post client. 
 
-That is. We have now a fully versatile system that interconnects MQTT and OCF Worlds! 
+That's it, Voila :-) **We have now a fully versatile system that interconnects MQTT and OCF Worlds!**
 
 A handy tool that helped me in the development was the [OCFSecure/client](https://github.com/iotivity/iotivity/blob/master/examples/OCFSecure/client.c) program of the IoTivity package. 
 
