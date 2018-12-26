@@ -12,19 +12,19 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-var mqtt    = require('mqtt');
+var mqtt = require('mqtt');
 var options = {
-  port: 3333,
-  host: '127.0.0.1',
-  protocol: 'mqtt',
-  queueQoSZero: false
+    port: 3333,
+    host: '127.0.0.1',
+    protocol: 'mqtt',
+    queueQoSZero: false
 }
 
-var client  = mqtt.connect(options);
+var client = mqtt.connect(options);
 console.log("Going to publish TestMQTT");
 
-client.on('message', function (topic, message) {
-  console.log("Received: " + message.toString() + " on topic: " + topic.toString());
+client.on('message', function(topic, message) {
+    console.log("Received: " + message.toString() + " on topic: " + topic.toString());
 });
 
 var testCommand = 'TestThat';
@@ -32,7 +32,7 @@ var testCommand = 'TestThat';
 setInterval(function() {
     testCommand = (testCommand === 'TestThat') ? 'TestThis' : 'TestThat';
     client.publish('TestMQTT', testCommand);
-  }, 2500);
+}, 2500);
 
 
 process.stdin.resume();

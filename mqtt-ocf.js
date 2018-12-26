@@ -15,445 +15,348 @@
 /*jslint node: true */
 "use strict";
 
-const myutil    = require('util');
+const myutil = require('util');
 var debuglog = myutil.debuglog('ocf_mqtt');
 
-/* The Central Structure: oicResources resources to create to handle he services. It is indexed by peripheral.uuid. 
-    It contains: 
-	//Todo: add resource itself and read handler if needed
-	resource: the resource created by IoTivity
-	serviceUuid: serviceUuid,
-	peripheralID: peripheralId,
-	oicSensorData:   per sensor/device data
-	hasUpdate : does the resource have new data to send to observers
-	observeHandler: observation/periodic read handler
-	observerCount: how many observer clients are there				
+/* 
+ The Central Structure: oicResources created OCF resource to handle he services.	
 */
-var oicResources = [] ; 
+var oicResources = [];
 var oicResourceCount = 0; //the number of created resources
 
 /* ObserverWrapper: Common class for handling notifications for all types of services */
-class ObserverWrapper{
-	constructor (resource, interval, getProperties){
-		//debuglog("=====================================> Creating new observer for " + JSON.stringify(resource, null, 4));
-		this.resource = resource;
-		this.interval = interval;
-		this.getProperties= getProperties;
-		this.observerCount = 0;
-		this.intervalId = 0;
-	}
+class ObserverWrapper {
+    constructor(resource, interval, getProperties) {
+        //debuglog("=====================================> Creating new observer for " + JSON.stringify(resource, null, 4));
+        this.resource = resource;
+        this.interval = interval;
+        this.getProperties = getProperties;
+        this.observerCount = 0;
+        this.intervalId = 0;
+    }
 
-	addObserver(){
-		  if ( this.observerCount === 0 ) {
-    		var resource = this.resource;
-			var getter = this.getProperties;
-			var interv = 1000*this.interval;
-    		this.intervalId = setInterval( function() {
-				//var rsrcIndex = getDeviceUUID(resource.deviceId);
-				var rsrcIndex = getResourceID(resource);
-				
-				resource.properties = getter(rsrcIndex, resource.resourceTypes[0]);
-				//debuglog("in add observer rsrcIndex = " + rsrcIndex + "   properties = " + JSON.stringify(resource.properties, null, 4 )) ;
-      			//resource.outputValue = Math.round( Math.random() * 42 ) + 1;
-				//debuglog("Observer: " + rsrcIndex + " Has Update: " + resource.properties.hasUpdate + "  ==>output: " +  JSON.stringify(resource.properties, null, 4 ));
-				if (oicResources[rsrcIndex].hasUpdate){
-      				resource.notify();
-					oicResources[rsrcIndex].hasUpdate = false;
-					//oicResources[rsrcIndex].hasUpdate = true; //always update for testing only
-				}
-    			}, interv );
-  		}
-		this.observerCount++;
-	}
+    addObserver() {
+        if (this.observerCount === 0) {
+            var resource = this.resource;
+            var getter = this.getProperties;
+            var interv = 1000 * this.interval;
+            this.intervalId = setInterval(function() {
+                //var rsrcIndex = getDeviceUUID(resource.deviceId);
+                var rsrcIndex = getResourceID(resource);
 
-	removeObserver() {
-  		this.observerCount--;
-		//debuglog("Observers for " + JSON.stringify(this.resource, null, 4)  + " = " + this.observerCount);
-  		if ( this.observerCount <= 0 ) {
-    		debuglog( "Turning off interval for " + JSON.stringify(this.resource.resourcePath, null, 4 ));
-    		clearInterval( this.intervalId );
-    		this.observerCount = 0;
-    		this.intervalId = 0;
-  		}
-	}
-}
-/*---------------------End of class ---------------------------------*/
-
-/*--------- This class and its usgae may not be needed at all -------*/
-class Lock {
-  constructor() {
-    this._locked = false;
-    this._ee = new EventEmitter();
-  }
-
-  acquire() {
-    return new Promise(resolve => {
-      // If nobody has the lock, take it and resolve immediately
-      if (!this._locked) {
-        // Safe because JS doesn't interrupt you on synchronous operations,
-        // so no need for compare-and-swap or anything like that.
-        this._locked = true;
-        return resolve();
-      }
-
-      // Otherwise, wait until somebody releases the lock and try again
-      const tryAcquire = () => {
-        if (!this._locked) {
-          this._locked = true;
-          this._ee.removeListener('release', tryAcquire);
-          return resolve();
+                resource.properties = getter(rsrcIndex, resource.resourceTypes[0]);
+                //debuglog("in add observer rsrcIndex = " + rsrcIndex + "   properties = " + JSON.stringify(resource.properties, null, 4 )) ;
+                //resource.outputValue = Math.round( Math.random() * 42 ) + 1;
+                //debuglog("Observer: " + rsrcIndex + " Has Update: " + resource.properties.hasUpdate + "  ==>output: " +  JSON.stringify(resource.properties, null, 4 ));
+                if (oicResources[rsrcIndex].hasUpdate) {
+                    resource.notify();
+                    oicResources[rsrcIndex].hasUpdate = false;
+                    //oicResources[rsrcIndex].hasUpdate = true; //always update for testing only
+                }
+            }, interv);
         }
-      };
-      this._ee.on('release', tryAcquire);
-    });
-  }
+        this.observerCount++;
+    }
 
-  release() {
-    // Release the lock immediately
-    this._locked = false;
-    setImmediate(() => this._ee.emit('release'));
-  }
+    removeObserver() {
+        this.observerCount--;
+        //debuglog("Observers for " + JSON.stringify(this.resource, null, 4)  + " = " + this.observerCount);
+        if (this.observerCount <= 0) {
+            debuglog("Turning off interval for " + JSON.stringify(this.resource.resourcePath, null, 4));
+            clearInterval(this.intervalId);
+            this.observerCount = 0;
+            this.intervalId = 0;
+        }
+    }
 }
 /*---------------------End of class ---------------------------------*/
 
-
-const EventEmitter  = require('events');
-var lock = new Lock();
+const EventEmitter = require('events');
 var mosca = require('mosca');
 var mylock = true;
+
 var ocfDevice = require('iotivity-node');
 ocfDevice.device = Object.assign(ocfDevice.device, {
-		name: 'OCF MQTT Proxy Server',
-		coreSpecVersion: 'core.1.1.0',
-		dataModels: ['res.1.1.0']
+    name: 'OCF MQTT Proxy Server',
+    coreSpecVersion: 'core.1.1.0',
+    dataModels: ['res.1.1.0']
 });
 
 ocfDevice.platform = Object.assign(ocfDevice.platform, {
-		manufacturerName: 'Campie_CU',
-		manufactureDate: new Date('Mon Sep 10 12:00:00 (GMT) 2018'),
-		platformVersion: '1.1.0',
-		firmwareVersion: '0.0.1'
+    manufacturerName: 'Campie_CU',
+    manufactureDate: new Date('Mon Sep 10 12:00:00 (GMT) 2018'),
+    platformVersion: '1.1.0',
+    firmwareVersion: '0.0.1'
 });
 
 
-  var server = new mosca.Server({
+var server = new mosca.Server({
     host: '127.0.0.1',
     port: 3333
-  });
+});
 
-  server.on('clientConnected', function(client) {
+server.on('clientConnected', function(client) {
     console.log('client connected', client.id);
-  });
+});
 
-  server.on('clientDisconnected', function(client) {
+server.on('clientDisconnected', function(client) {
     console.log('client disconnected', client.id);
-  });
+});
 
-  server.on('published', function(packet, client) {
+server.on('published', function(packet, client) {
     //console.log('published from: ', client.id);
     //console.log("Published: ");
     //console.log(packet);
-	//lock.acquire();
-	if (mylock === true)
-	{
-	mylock = false;
-	var tempTopic = packet.topic;
-    if (client && client.id){
-        //console.log('Published: '+ tempTopic + ' from: '+ client.id);
-		//lock.acquire();
-		ocfMqttPublishHandle(tempTopic, client.id, packet.payload);
-		//lock.release();
-	}	
-	//lock.release();
-	mylock = true;
-	}
-  });
 
-  server.on('subscribed', function(topic, client) {
-    console.log('subscribed: ' + client.id + ' to topic: '+ topic);
-	ocfMqttSubscribeHandle(topic, client);
-  });
+    if (mylock === true) {
+        mylock = false;
+        var tempTopic = packet.topic;
+        if (client && client.id) {
+            //console.log('Published: '+ tempTopic + ' from: '+ client.id);
+            ocfMqttPublishHandle(tempTopic, client.id, packet.payload);
+        }
 
-  server.on('unsubscribed', function(topic, client) {
-    console.log('unsubscribed: ' + client.id);    
-  });
+        mylock = true;
+    }
+});
 
-  server.on('ready', function() {
+server.on('subscribed', function(topic, client) {
+    console.log('subscribed: ' + client.id + ' to topic: ' + topic);
+    ocfMqttSubscribeHandle(topic, client);
+});
+
+server.on('unsubscribed', function(topic, client) {
+    console.log('unsubscribed: ' + client.id);
+});
+
+server.on('ready', function() {
     console.log('Mosca server is up and running');
-  });
+});
 
 /* Create mqtt virtual client to send publish request when OCF proxy receives PUT requests*/
 
-var mqtt    = require('mqtt');
+var mqtt = require('mqtt');
 var virtual_client = mqtt.connect('mqtt://127.0.0.1:3333');
 //console.log('virtual client connected', virtual_client.id)
 
-virtual_client.on('message', function (topic, message) {
-  console.log("Received: " + message.toString() + " on topic: " + topic.toString());
+virtual_client.on('message', function(topic, message) {
+    console.log("Received: " + message.toString() + " on topic: " + topic.toString());
 });
 
-var ocfMqttPublishHandle = function(topic, client_id, payload)
-{
-	//local vars
-	var	
-		createResource = true,
-		resourceInterfaceName = '/a/mqtt/'+topic,
-		resourceTypeName = 'oic.r.MQTT_PUB',
-		deviceID
-	;
-	//console.log("oicHrmInitService: The resource interface is" + resourceInterfaceName);			
-		for (var i in oicResources){
-			if (oicResources[i].mqtt_topic === topic){
-				createResource = false;
-				//debuglog("--Updating resource id " + i + " with data: " + payload);
-				if (oicResources[i].data != payload){
-					oicResources[i].hasUpdate = true;
-					oicResources[i].data = payload;
-				}
-			}
-		}
- 
-	//debuglog("=========> Creating OCF Device: " + oicResourceCount);
-/*
-	tempDevice.device = Object.assign(tempDevice.device, {
-		name: 'OCF MQTT Proxy Server',
-		coreSpecVersion: 'core.1.1.0',
-		dataModels: ['res.1.1.0']
-	});
+var ocfMqttPublishHandle = function(topic, client_id, payload) {
+    //local vars
+    var
+        createResource = true,
+        resourceInterfaceName = '/a/mqtt/' + topic,
+        resourceTypeName = 'oic.r.MQTT_PUB',
+        deviceID;
+    //console.log("oicHrmInitService: The resource interface is" + resourceInterfaceName);			
+    for (var i in oicResources) {
+        if (oicResources[i].mqtt_topic === topic) {
+            createResource = false;
+            //debuglog("--Updating resource id " + i + " with data: " + payload);
+            if (oicResources[i].data != payload) {
+                oicResources[i].hasUpdate = true;
+                oicResources[i].data = payload;
+            }
+        }
+    }
 
-	tempDevice.platform = Object.assign(tempDevice.platform, {
-		manufacturerName: 'Campie_CU',
-		manufactureDate: new Date('Mon Sep 10 12:00:00 (GMT) 2018'),
-		platformVersion: '1.1.0',
-		firmwareVersion: '0.0.1'
-	});
-*/
-
-	if (createResource){	
-	if (ocfDevice.device.uuid) {	 //device uuid exists as part of device interface
-    	// Register HRS resource
-		debuglog("=========> OCF register service: " + resourceInterfaceName);
-    	ocfDevice.server.register({
-        	resourcePath: resourceInterfaceName,
-        	resourceTypes: [ resourceTypeName ],
-        	interfaces: [ 'oic.if.baseline' ],
-        	discoverable: true,
-        	observable: true,
-			secure: true,
-        	properties: getMqttData(null, resourceTypeName) //this resource needs to be involved!
-    	}).then(
-        	function(resource) {
-        		/* 	This is where iotivity server is created and adds handlers for different operation.
+    if (createResource) {
+        if (ocfDevice.device.uuid) { //device uuid exists as part of device interface
+            // Register HRS resource
+            debuglog("=========> OCF register service: " + resourceInterfaceName);
+            ocfDevice.server.register({
+                resourcePath: resourceInterfaceName,
+                resourceTypes: [resourceTypeName],
+                interfaces: ['oic.if.baseline'],
+                discoverable: true,
+                observable: true,
+                secure: true,
+                properties: getMqttData(null, resourceTypeName) //this resource needs to be involved!
+            }).then(
+                function(resource) {
+                    /* 	This is where iotivity server is created and adds handlers for different operation.
 			   		Add retrieve handler and register with RD
         		*/
-				
-				//fill the oicResources array 
-				var rsrcIndex = getResourceID(resource);
-            	//debuglog("++Updating resource id " + rsrcIndex + " with data: " + payload);
-				oicResources[rsrcIndex] = { 
-						mqtt_topic: topic,
-						client: client_id,
-						data:   payload,
-						hasUpdate : true,
-						observeHandler: new ObserverWrapper(resource, 2, getMqttData),
-						observerCount: 0,
-				};
 
-				oicResourceCount++; 
-				debuglog(" oicMqttService: oicResource info updated. Resource created:" + resourceInterfaceName);
-				resource.onupdate(mqttUpdateHandler);
-				resource.onretrieve(mqttRetrieveHandler);
-				
-				//RD registration for all proxied resources
-				//RegisterWithRD(resource._private.handle); 
-			
-        	},
-        	
-			function(error) {
-            	debuglog('register() resource failed with: ', error);
-        	});
-	}
-	}
+                    //fill the oicResources array 
+                    var rsrcIndex = getResourceID(resource);
+                    //debuglog("++Updating resource id " + rsrcIndex + " with data: " + payload);
+                    oicResources[rsrcIndex] = {
+                        mqtt_topic: topic,
+                        client: client_id,
+                        data: payload,
+                        hasUpdate: true,
+                        observeHandler: new ObserverWrapper(resource, 2, getMqttData),
+                        observerCount: 0,
+                    };
+
+                    oicResourceCount++;
+                    debuglog(" oicMqttService: oicResource info updated. Resource created:" + resourceInterfaceName);
+                    resource.onupdate(mqttUpdateHandler);
+                    resource.onretrieve(mqttRetrieveHandler);
+
+                    //RD registration for all proxied resources
+                    //RegisterWithRD(resource._private.handle); 
+
+                },
+
+                function(error) {
+                    debuglog('register() resource failed with: ', error);
+                });
+        }
+    }
 
 }
 
-var ocfMqttSubscribeHandle = function(topic, client_id)
-{
-	//local vars
-	var	
-		createResource = true,
-		resourceInterfaceName = '/a/mqtt/'+topic,
-		resourceTypeName = 'oic.r.MQTT_SUB',
-		deviceID
-	;
-	//console.log("oicHrmInitService: The resource interface is" + resourceInterfaceName);			
-		for (var i in oicResources){
-			if (oicResources[i].mqtt_topic === topic){
-				createResource = false;
-				//debuglog("--Updating resource id " + i + " with data: " + payload);
-				/*
-				if (oicResources[i].data != payload){
-					oicResources[i].hasUpdate = true;
-					oicResources[i].data = payload;
-				}
-				*/
-			}
-		}
- 
+var ocfMqttSubscribeHandle = function(topic, client_id) {
+    //local vars
+    var
+        createResource = true,
+        resourceInterfaceName = '/a/mqtt/' + topic,
+        resourceTypeName = 'oic.r.MQTT_SUB',
+        deviceID;
+    //console.log("oicHrmInitService: The resource interface is" + resourceInterfaceName);			
+    for (var i in oicResources) {
+        if (oicResources[i].mqtt_topic === topic) {
+            createResource = false;
+        }
+    }
 
-	//debuglog("=========> Creating OCF Device: " + oicResourceCount);
-/*
-	tempDevice.device = Object.assign(tempDevice.device, {
-		name: 'OCF MQTT Proxy Server',
-		coreSpecVersion: 'core.1.1.0',
-		dataModels: ['res.1.1.0']
-	});
-
-	tempDevice.platform = Object.assign(tempDevice.platform, {
-		manufacturerName: 'Campie_CU',
-		manufactureDate: new Date('Mon Sep 10 12:00:00 (GMT) 2018'),
-		platformVersion: '1.1.0',
-		firmwareVersion: '0.0.1'
-	});
-*/	
-	if (createResource){
-	if (ocfDevice.device.uuid) {	 //device uuid exists as part of device interface
-    	// Register HRS resource
-		debuglog("=========>  OCF register service: " + resourceInterfaceName );
-    	ocfDevice.server.register({
-        	resourcePath: resourceInterfaceName,
-        	resourceTypes: [ resourceTypeName ],
-        	interfaces: [ 'oic.if.baseline' ],
-        	discoverable: true,
-        	observable: true,
-			secure: true,
-        	properties: getMqttData(null, resourceTypeName) //this resource needs to be involved!
-    	}).then(
-        	function(resource) {
-        		/* 	This is where iotivity server is created and adds handlers for different operation.
+    if (createResource) {
+        if (ocfDevice.device.uuid) { //device uuid exists as part of device interface
+            // Register HRS resource
+            debuglog("=========>  OCF register service: " + resourceInterfaceName);
+            ocfDevice.server.register({
+                resourcePath: resourceInterfaceName,
+                resourceTypes: [resourceTypeName],
+                interfaces: ['oic.if.baseline'],
+                discoverable: true,
+                observable: true,
+                secure: true,
+                properties: getMqttData(null, resourceTypeName) //this resource needs to be involved!
+            }).then(
+                function(resource) {
+                    /* 	This is where iotivity server is created and adds handlers for different operation.
 			   		Add retrieve handler and register with RD
         		*/
-				
-				//fill the oicResources array 
-				var rsrcIndex = getResourceID(resource);
-            	//debuglog("++Updating resource id " + rsrcIndex + " with data: " + payload);
-				oicResources[rsrcIndex] = { 
-						mqtt_topic: topic,
-						client: client_id, //multiple clients may subscribe, so this may not be correct
-						data:   "",
-						hasUpdate : true,
-						observeHandler: new ObserverWrapper(resource, 2, getMqttData),
-						observerCount: 0,
-				};
 
-				oicResourceCount++; 
-				debuglog(" oicMqttService: oicResource info updated. Resource created:" + resourceInterfaceName);
-				resource.onupdate(mqttUpdateHandler);
-				resource.onretrieve(mqttRetrieveHandler);
-				//TODO: add ondelte  handlers
-				
-				//RD registration for all proxied resources
-				//RegisterWithRD(resource._private.handle); 
-			
-        	},
-        	
-			function(error) {
-            	debuglog('register() resource failed with: ', error);
-        	});
-	}
-	}
+                    //fill the oicResources array 
+                    var rsrcIndex = getResourceID(resource);
+                    //debuglog("++Updating resource id " + rsrcIndex + " with data: " + payload);
+                    oicResources[rsrcIndex] = {
+                        mqtt_topic: topic,
+                        client: client_id, //multiple clients may subscribe, so this may not be correct
+                        data: "",
+                        hasUpdate: true,
+                        observeHandler: new ObserverWrapper(resource, 2, getMqttData),
+                        observerCount: 0,
+                    };
+
+                    oicResourceCount++;
+                    debuglog(" oicMqttService: oicResource info updated. Resource created:" + resourceInterfaceName);
+                    resource.onupdate(mqttUpdateHandler);
+                    resource.onretrieve(mqttRetrieveHandler);
+
+                    //TODO: add ondelete  handlers
+
+                    //RD registration for all proxied resources
+                    //RegisterWithRD(resource._private.handle); 
+
+                },
+
+                function(error) {
+                    debuglog('register() resource failed with: ', error);
+                });
+        }
+    }
 
 }
 
 function getMqttData(resID, rtName) {
-	//debuglog("ResId = " + resID);
-	var properties;
-	if (resID === null)
-	{
-		properties = 	
-		{
-			rt: rtName,
-			id: 'Mqtt_Service',
-			payload:   'MQTT_NO_DATA'
-		};
-	} else {
-		//debuglog("payload: " + oicResources[resID].data);
-		properties = 	
-		{
-			rt: rtName,
-			id: 'Mqtt_Service',
-			payload:   String(oicResources[resID].data)
-		};
-	}
-	//debuglog('Zephyr_HR: get properties done ' + JSON.stringify( properties, null, 4 ));
-	return properties;
+    //debuglog("ResId = " + resID);
+    var properties;
+    if (resID === null) {
+        properties = {
+            rt: rtName,
+            id: 'Mqtt_Service',
+            payload: 'MQTT_NO_DATA'
+        };
+    } else {
+        //debuglog("payload: " + oicResources[resID].data);
+        properties = {
+            rt: rtName,
+            id: 'Mqtt_Service',
+            payload: String(oicResources[resID].data)
+        };
+    }
+    //debuglog('Zephyr_HR: get properties done ' + JSON.stringify( properties, null, 4 ));
+    return properties;
 }
 
 
 /*--------- Common Functions for all services/resources ---------*/
-function getResourceID(resource)
-{
-	//debuglog('resource is ' + JSON.stringify(resource));
-	//var temp=resource.properties.peripheralID+"_"+resource.properties.serviceUuid;
-	var temp=resource.resourcePath.replace(/\//g,"");;
-	return temp;
+function getResourceID(resource) {
+    //debuglog('resource is ' + JSON.stringify(resource));
+    //var temp=resource.properties.peripheralID+"_"+resource.properties.serviceUuid;
+    var temp = resource.resourcePath.replace(/\//g, "");;
+    return temp;
 }
 
 
 function mqttRetrieveHandler(request) {
 
     var mqtt_Resource = request.target;
-	var rsrcIndex;
+    var rsrcIndex;
 
-	rsrcIndex=getResourceID(mqtt_Resource);
-	mqtt_Resource.properties = getMqttData(rsrcIndex, mqtt_Resource.resourceTypes[0]);
-    debuglog('Processing retrieve request. Properties: ' + JSON.stringify( mqtt_Resource.properties ));
+    rsrcIndex = getResourceID(mqtt_Resource);
+    mqtt_Resource.properties = getMqttData(rsrcIndex, mqtt_Resource.resourceTypes[0]);
+    debuglog('Processing retrieve request. Properties: ' + JSON.stringify(mqtt_Resource.properties));
     request.respond(mqtt_Resource).catch(handleError);
-    
-	if ("observe" in request) {
+
+    if ("observe" in request) {
         oicResources[rsrcIndex].observerCount += request.observe ? 1 : -1;
-		if (request.observe){
-			debuglog("========> Adding observer to resource " + rsrcIndex);
-			oicResources[rsrcIndex].observeHandler.addObserver();
-		}
-		else
-			oicResources[rsrcIndex].observeHandler.removeObserver();
+        if (request.observe) {
+            debuglog("========> Adding observer to resource " + rsrcIndex);
+            oicResources[rsrcIndex].observeHandler.addObserver();
+        } else
+            oicResources[rsrcIndex].observeHandler.removeObserver();
     }
 
 }
 
 
 function mqttUpdateHandler(request) {
-/*
-Get the topic asccociated with the resouce
-send a publish request to server with the data in the request
-*/
+    /*
+    Get the topic asccociated with the resouce
+    send a publish request to server with the data in the request
+    */
     var mqtt_Resource = request.target;
-	var mqtt_topic;
-	var rsrcIndex;
+    var mqtt_topic;
+    var rsrcIndex;
 
-	//debuglog('Processing PUT request: ' + JSON.stringify( request ));
-	
+    //debuglog('Processing PUT request: ' + JSON.stringify( request ));
 
-	rsrcIndex=getResourceID(mqtt_Resource);
-	
-	mqtt_topic = oicResources[rsrcIndex].mqtt_topic;
+    rsrcIndex = getResourceID(mqtt_Resource);
 
-	oicResources[rsrcIndex].data=String(request.data.value);
-	//oicResources[rsrcIndex].data=JSON.stringify(request.data);
-	oicResources[rsrcIndex].hasUpdate = true;
+    mqtt_topic = oicResources[rsrcIndex].mqtt_topic;
 
-	mqtt_Resource.properties = getMqttData(rsrcIndex, mqtt_Resource.resourceTypes[0]);
-	//virtual_client.publish(mqtt_topic, request.data.payload);
-	virtual_client.publish(mqtt_topic, oicResources[rsrcIndex].data);
+    oicResources[rsrcIndex].data = String(request.data.value);
+    //oicResources[rsrcIndex].data=JSON.stringify(request.data);
+    oicResources[rsrcIndex].hasUpdate = true;
 
-    debuglog('Processing PUT request: rsrcIndex   '  + rsrcIndex);
-	debuglog('Processing PUT request. Resource Properties: ' + JSON.stringify( mqtt_Resource.properties ));
+    mqtt_Resource.properties = getMqttData(rsrcIndex, mqtt_Resource.resourceTypes[0]);
+    //virtual_client.publish(mqtt_topic, request.data.payload);
+    virtual_client.publish(mqtt_topic, oicResources[rsrcIndex].data);
+
+    debuglog('Processing PUT request: rsrcIndex   ' + rsrcIndex);
+    debuglog('Processing PUT request. Resource Properties: ' + JSON.stringify(mqtt_Resource.properties));
     request.respond(mqtt_Resource).catch(handleError);
 }
 
 function handleError(error) {
-	debuglog('Failed to send response with error: ', error);
+    debuglog('Failed to send response with error: ', error);
 }
 /*--------- End Common Functions for all resources ---------*/
 

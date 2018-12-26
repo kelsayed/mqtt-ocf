@@ -12,15 +12,15 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-var mqtt    = require('mqtt');
+var mqtt = require('mqtt');
 //var client  = mqtt.connect('mqtt://test.mosquitto.org');
-var client  = mqtt.connect('mqtt://127.0.0.1:3333');
+var client = mqtt.connect('mqtt://127.0.0.1:3333');
 console.log("Going to Subscribe to LEDToggle topic");
 client.subscribe('LEDToggle');
 
 
-client.on('message', function (topic, message) {
-  console.log("Received: " + message.toString() + " on topic: " + topic.toString());
+client.on('message', function(topic, message) {
+    console.log("Received: " + message.toString() + " on topic: " + topic.toString());
 });
 
 

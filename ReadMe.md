@@ -2,20 +2,20 @@
 
 ## Description
 
-This project provides a node.js based gateway for interconnecting MQTT publishers/subscribers to OCF based clients.  It is based on the node.js [mosca](https://github.com/mcollina/mosca)  MQTT broker and [iotivity-node]( https://github.com/intel/iotivity-node) Iotivity implementation in node.js. In summary, an OCF resource is created for each identified MQTT topic at the MQTT broker. Then the MQTT topic and corresponding OCF resource are considered as one logical entity. The communication among MQTT and OCF clients is bi-directional:
+This project provides a node.js based gateway for interconnecting MQTT publishers/subscribers to OCF based clients.  It is based on the node.js [mosca](https://github.com/mcollina/mosca) MQTT broker and [iotivity-node](https://github.com/intel/iotivity-node) Iotivity implementation in node.js. In summary, an OCF resource is created for each identified MQTT topic at the MQTT broker. Then the MQTT topic and corresponding OCF resource are considered as one logical entity. The communication among MQTT and OCF clients is bi-directional:
 
 - A MQTT publisher updating a specific MQTT topic will push the update to the MQTT subscribers and update the the resource value for the corresponding OCF resource. Subscribing OCF clients (e.g. observer) or OCF clients performing a GET shall then get the updated resource value. 
 - An OCF client performing a POST operation on the OCF resource will cause an update to be pushed to the MQTT subscribers.
 
 Currently, **all OCF resource/mqtt topic data is treated as strings**. Future versions should resolve this issue.
 
-Future versions shall also consider the case of offering an OCF service on some proper resource (say /oic/mqttgw) that will enable interested OCF servers to create MQTT topics corresponding to their resources on the gateway. The gateway shall then subscribe to the registered OCF resources and publish the updated resource values on the corresponding MQTT topic.  
+Future versions shall also consider the case of offering an OCF service on some proper resource (say /oic/mqttgw) that will enable interested OCF servers to create MQTT topics corresponding to their resources on the gateway. The gateway shall then subscribe to the registered OCF resources and publish the updated resource values on the corresponding MQTT topic.
 
 ## Installation
 
 This package has been tested on Linux only. Should run similarly on  OSX. For installation do the following:
 
-1. Make sure [node](https://nodejs.org) version 4.2.6 or later is up and running. This means that:
+1. Make sure [node](https://nodejs.org) version 4.2.6 or later is up and running (It should actually work on older versions, but this is the version that I tested it with). This means that:
 	1. the command `node -v` reports a version  4.2.6 or later
 	1. the directory in which the `node` binary can be found is listed in the `PATH` environment variable.
 1. Install the following packages, which your distribution should provide:
@@ -24,7 +24,7 @@ This package has been tested on Linux only. Should run similarly on  OSX. For in
    1. A C compiler and a C++ compiler (gcc-5 or later)
 1. Clone this repository.
 1. cd `mqtt-ocf`
-1. Run `npm install`. This should download iotivity-node, mqtt, and mosca packages and their dependencies. Downloading iotivity-node install iotivity. More details can be found in the iotivity-node package repository (add link).
+1. Run `npm install`. This should download iotivity-node, mqtt, and mosca packages and their dependencies. Downloading iotivity-node install iotivity. More details can be found in the [iotivity-node](https://github.com/intel/iotivity-node) package repository.
 
 ## Detailed Description and Flows
 The package consists of one module the  mqtt-ocf.js which is called the "server". The mqtt-ocf server is comprised of two logical entities: An MQTT Broker and an OCF Proxy. There are three additional folders:
@@ -70,6 +70,7 @@ To run the examples, the first thing we need to do is setup the security and pro
 Below we show how to setup the security credentials for mqtt-ocf. First, make sure that  `setup_sec_json.bash`has execute permission. If not do a `chmod 755 setup_sec_json.bash`.
 
 1. In the package root directory where mqtt-ocf.js is found, issue the following command:
+
     `acl/setup_sec_json.bash  mqtt-ocf.js  acl/working-server.json`
 
 2. cd js and issue the following commands and repeat for the remaining clients that you want to test with. We mainly demonstrate with `client-arg.observe.js`  and `client.periodicput.coaps.js`.
@@ -86,19 +87,31 @@ First make sure no firewall is running (or one is properly configured to allow M
 
 1. Go to the root directory of `mqtt-ocf.js`, open a shell terminal, execute `node mqtt-ocf.js` OR if interested in watching closely what is going on then `NODE_DEBUG=ocf_mqtt node mqtt-ocf.js`
    Don't ask me why the `ocf_mqtt` identifier is used, just how it was started in the `debuglog` statements.   Can be changed effortlessly. 
-2. Now `cd js`. Each of the following will need its own terminal or tab.  
+
+2. Now `cd js`. Each of the following will need its own terminal or tab. 
+
 3. Issue the first MQTT publisher  by issuing`node pub.js`. This publishes a topic called `LEDToggle`. The mqtt-ocf server creates the OCF resource `/a/mqtt/LEDToggle`
+
 4. Issue MQTT subscriber  by issuing `node sub.js` . This subscribes to the `LEDToggle` topic. You should be starting to see the logs of the pushed updates from the publisher. 
+
 5. Issue the second MQTT publisher  by issuing `node pub2.js`. This publishes a topic called `TestMQTT`. The mqtt-ocf server creates the OCF resource `/a/mqtt/TestMQTT`.
+
 6. Issue the second MQTT subscriber by issuing `node sub2.js`. This subscribes to the `TestOcfTopic` topic. No MQTT publisher is publishing to this topic. Nothing happens here in the subscriber log. However, the `mqtt-ocf` server creates the resource `/a/mqtt/TestOcfTopic`. 
+
 7. Now, time to start some OCF clients. Issue an observer client  by issuing 
+
    `node  client-arg.observe.js /a/mqtt/LEDToggle 100` 
+
    what this does is observing the `/a/mqtt/LEDToggle` resource for 100 times. You can run this again with different resources (e.g. the /a/mqtt/TestMQT ). You should then get the same updates as any MQTT subscriber to the topic. 
+
 8. Start two OCF Post clients by issuing the commands below. Note that the post client generates random strings taking the value from `OCFTestRandomString000` to `OCFTestRandomString999`
+
    `node  client.periodicput.coaps.js /a/mqtt/LEDToggle 100`
-   The first MQTT subscriber shall now get updates from both the MQTT publisher and OCF Post client. 
-   and another 
+   
+   The first MQTT subscriber shall now get updates from both the MQTT publisher and OCF Post client. Then create another post client
+   
    `node  client.periodicput.coaps.js /a/mqtt/TestOcfTopic 100`
+
    The second MQTT subscriber shall now get the updates posted by the OCF Post client. 
 
 That's it, Voila :-) **We have now a fully versatile system that interconnects MQTT and OCF Worlds!**
