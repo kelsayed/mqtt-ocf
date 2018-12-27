@@ -11,20 +11,40 @@ Currently, **all OCF resource/mqtt topic data is treated as strings**. Future ve
 
 Future versions shall also consider the case of offering an OCF service on some proper resource (say /oic/mqttgw) that will enable interested OCF servers to create MQTT topics corresponding to their resources on the gateway. The gateway shall then subscribe to the registered OCF resources and publish the updated resource values on the corresponding MQTT topic.
 
+sudo apt-get install libglib2.0-dev
+
+now 
+
 ## Installation
 
-This package has been tested on Linux only. Should run similarly on  OSX. For installation do the following:
+This package has been tested on Linux only. Should run similarly on  OSX. Since iotivity-node downloads  [IoTivity](http://iotivity.org) and builds parts of it, be warned that installation on a computer that has not installed IoTivity before, may involve doing a lot of steps to install libraries and dependencies that IoTivity needs. See the following subsection for some commands that can be handy for a Ubunto based Linux distribution to expedite the installation process. 
+
+For installation do the following:
 
 1. Make sure [node](https://nodejs.org) version 4.2.6 or later is up and running (It should actually work on older versions, but this is the version that I tested it with). This means that:
 	1. the command `node -v` reports a version  4.2.6 or later
 	1. the directory in which the `node` binary can be found is listed in the `PATH` environment variable.
 1. Install the following packages, which your distribution should provide:
-   1. unzip, scons (version 2.51), git, and make
+   1. unzip, scons (version 2.51), git, make, autoconf
    1. Development headers for libuuid, and glib2
-   1. A C compiler and a C++ compiler (gcc-5 or later)
+   1. A C compiler and a C++ compiler (gcc-4.7 or later)
 1. Clone this repository.
 1. cd `mqtt-ocf`
 1. Run `npm install`. This should download iotivity-node, mqtt, and mosca packages and their dependencies. Downloading iotivity-node install iotivity. More details can be found in the [iotivity-node](https://github.com/intel/iotivity-node) package repository.
+
+### Some Useful Installation Commands on Ubunto-base Linux Systems
+On systems like Ubunto and Mint, the following commands can be handy to install some of the tools/libraries needed by IoTivity. Still not every things but it should be helpful.
+1. scons: `sudo apt-get install scons`
+1. glib2: `sudo apt-get install libglib2.0-dev`
+1. libuuid: `sudo apt-get install uuid-dev`
+1. sqlite3: `sudo apt-get install sqlite3 libsqlite3-dev`
+1. autoconf, autotools-dev, automake:
+  `sudo apt-get install autoconf`
+  `sudo apt-get install autotools-dev`
+  `sudo apt-get install automake`
+
+Note that there are reports that latest versions of gcc/g++ can result in some IoTivity compilation errors. Bettter use gcc 4.7 or 5. 
+
 
 ## Detailed Description and Flows
 The package consists of one module the  mqtt-ocf.js which is called the "server". The mqtt-ocf server is comprised of two logical entities: An MQTT Broker and an OCF Proxy. There are three additional folders:
