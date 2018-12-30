@@ -144,4 +144,4 @@ Would like to ACK the tiresome efforts of [Gabriel Schulhof](https://github.com/
 
 Would also like to ACK Nathan Heldt-Sheller for good insights on OCF security. 
 
-This is work is part of the [Campie Project](http://campie.cu.edu.eg) funded by the [National Telecom Regulatory Authority NTRA](http://ntra.gov.eg) of [Egypt](http://www.egypt.travel/).
+This work is part of the [Campie Project](http://campie.cu.edu.eg) funded by the [National Telecom Regulatory Authority NTRA](http://ntra.gov.eg) of [Egypt](http://www.egypt.travel/).
