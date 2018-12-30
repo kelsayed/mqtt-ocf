@@ -32,7 +32,7 @@ For installation do the following:
 1. cd `mqtt-ocf`
 1. Run `npm install`. This should download iotivity-node, mqtt, and mosca packages and their dependencies. Downloading iotivity-node install iotivity. More details can be found in the [iotivity-node](https://github.com/intel/iotivity-node) package repository.
 
-### Some Useful Installation Commands on Ubunto-base Linux Systems
+### Some Useful Installation Commands on Ubunto-based Linux Systems
 On systems like Ubunto and Mint, the following commands can be handy to install some of the tools/libraries needed by IoTivity. Still not every things but it should be helpful.
 1. scons: `sudo apt-get install scons`
 1. glib2: `sudo apt-get install libglib2.0-dev`
@@ -143,3 +143,5 @@ A handy tool that helped me in the development was the [OCFSecure/client](https:
 Would like to ACK the tiresome efforts of [Gabriel Schulhof](https://github.com/gabrielschulhof) who really helped me a lot understand node.js and iotivity-node. 
 
 Would also like to ACK Nathan Heldt-Sheller for good insights on OCF security. 
+
+This is work is part of the [Campie Project](http://campie.cu.edu.eg) funded by the [National Telecom Regulatory Authority NTRA](http://ntra.gov.eg) of [Egypt](http://www.egypt.travel/).
