@@ -10,10 +10,7 @@ This project provides a node.js based gateway for interconnecting MQTT publisher
 Currently, **all OCF resource/mqtt topic data is treated as strings**. Future versions should resolve this issue.
 
 Future versions shall also consider the case of offering an OCF service on some proper resource (say /oic/mqttgw) that will enable interested OCF servers to create MQTT topics corresponding to their resources on the gateway. The gateway shall then subscribe to the registered OCF resources and publish the updated resource values on the corresponding MQTT topic.
-
-sudo apt-get install libglib2.0-dev
-
-now 
+ 
 
 ## Installation
 
@@ -30,7 +27,7 @@ For installation do the following:
    1. A C compiler and a C++ compiler (gcc-4.7 or later)
 1. Clone this repository.
 1. cd `mqtt-ocf`
-1. Run `npm install`. This should download iotivity-node, mqtt, and mosca packages and their dependencies. Downloading iotivity-node install iotivity. More details can be found in the [iotivity-node](https://github.com/intel/iotivity-node) package repository.
+1. Run `npm install`. This should download iotivity-node, mqtt, and mosca packages and their dependencies. Downloading iotivity-node installs IoTivity library. More details can be found in the [iotivity-node](https://github.com/intel/iotivity-node) package repository.
 
 ### Some Useful Installation Commands on Ubunto-based Linux Systems
 On systems like Ubunto and Mint, the following commands can be handy to install some of the tools/libraries needed by IoTivity. Still not every things but it should be helpful.
@@ -39,11 +36,11 @@ On systems like Ubunto and Mint, the following commands can be handy to install 
 1. libuuid: `sudo apt-get install uuid-dev`
 1. sqlite3: `sudo apt-get install sqlite3 libsqlite3-dev`
 1. autoconf, autotools-dev, automake:
-  `sudo apt-get install autoconf`
-  `sudo apt-get install autotools-dev`
+  `sudo apt-get install autoconf`</br>
+  `sudo apt-get install autotools-dev`</br>
   `sudo apt-get install automake`
 
-Note that there are reports that latest versions of gcc/g++ can result in some IoTivity compilation errors. Bettter use gcc 4.7 or 5. 
+Note that I have expeienced that new versions of Ubunto/Mint can result in IoTivity 1.3.x (which IoTivity-node uses) compilation errors. This system was tested on Linux Mint 18.1. 
 
 
 ## Detailed Description and Flows
@@ -105,7 +102,10 @@ You will now be ready to move to the next step.
 
 First make sure no firewall is running (or one is properly configured to allow MQTT and iotivity-related traffic and especially multicast traffic) on the machine(s) where these applications are running.
 
-1. Go to the root directory of `mqtt-ocf.js`, open a shell terminal, execute `node mqtt-ocf.js` OR if interested in watching closely what is going on then `NODE_DEBUG=ocf_mqtt node mqtt-ocf.js`
+1. Go to the root directory of `mqtt-ocf.js`, open a shell terminal, and execute </br> 
+`node mqtt-ocf.js` </br>
+OR if interested in watching closely what is going on then </br>
+`NODE_DEBUG=ocf_mqtt node mqtt-ocf.js` </br>
    Don't ask me why the `ocf_mqtt` identifier is used, just how it was started in the `debuglog` statements.   Can be changed effortlessly. 
 
 2. Now `cd js`. Each of the following will need its own terminal or tab. 
@@ -118,19 +118,19 @@ First make sure no firewall is running (or one is properly configured to allow M
 
 6. Issue the second MQTT subscriber by issuing `node sub2.js`. This subscribes to the `TestOcfTopic` topic. No MQTT publisher is publishing to this topic. Nothing happens here in the subscriber log. However, the `mqtt-ocf` server creates the resource `/a/mqtt/TestOcfTopic`. 
 
-7. Now, time to start some OCF clients. Issue an observer client  by issuing 
+7. Now, time to start some OCF clients. Issue an observer client  by issuing </br> 
 
-   `node  client-arg.observe.js /a/mqtt/LEDToggle 100` 
+   `node  client-arg.observe.js /a/mqtt/LEDToggle 100` </br>
 
    what this does is observing the `/a/mqtt/LEDToggle` resource for 100 times. You can run this again with different resources (e.g. the /a/mqtt/TestMQT ). You should then get the same updates as any MQTT subscriber to the topic. 
 
-8. Start two OCF Post clients by issuing the commands below. Note that the post client generates random strings taking the value from `OCFTestRandomString000` to `OCFTestRandomString999`
+8. Start two OCF Post clients by issuing the commands below. Note that the post client generates random strings taking the value from `OCFTestRandomString000` to `OCFTestRandomString999` </br>
 
-   `node  client.periodicput.coaps.js /a/mqtt/LEDToggle 100`
+   `node  client.periodicput.coaps.js /a/mqtt/LEDToggle 100` </br>
    
-   The first MQTT subscriber shall now get updates from both the MQTT publisher and OCF Post client. Then create another post client
+   The first MQTT subscriber shall now get updates from both the MQTT publisher and OCF Post client. Then create another post client </br>
    
-   `node  client.periodicput.coaps.js /a/mqtt/TestOcfTopic 100`
+   `node  client.periodicput.coaps.js /a/mqtt/TestOcfTopic 100` </br>
 
    The second MQTT subscriber shall now get the updates posted by the OCF Post client. 
 
@@ -140,8 +140,10 @@ A handy tool that helped me in the development was the [OCFSecure/client](https:
 
 ## Acknowledgements
 
+This work is part of the [Campie Project](http://campie.cu.edu.eg) funded by the [National Telecom Regulatory Authority NTRA](http://ntra.gov.eg) of [Egypt](http://www.egypt.travel/).
+
 Would like to ACK the tiresome efforts of [Gabriel Schulhof](https://github.com/gabrielschulhof) who really helped me a lot understand node.js and iotivity-node. 
 
 Would also like to ACK Nathan Heldt-Sheller for good insights on OCF security. 
 
-This work is part of the [Campie Project](http://campie.cu.edu.eg) funded by the [National Telecom Regulatory Authority NTRA](http://ntra.gov.eg) of [Egypt](http://www.egypt.travel/).
+
