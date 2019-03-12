@@ -35,7 +35,7 @@ On systems like Ubunto and Mint, the following commands can be handy to install 
 1. glib2: `sudo apt-get install libglib2.0-dev`
 1. libuuid: `sudo apt-get install uuid-dev`
 1. sqlite3: `sudo apt-get install sqlite3 libsqlite3-dev`
-1. autoconf, autotools-dev, automake:
+1. autoconf, autotools-dev, automake: </br>
   `sudo apt-get install autoconf`</br>
   `sudo apt-get install autotools-dev`</br>
   `sudo apt-get install automake`
