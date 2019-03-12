@@ -51,7 +51,7 @@
                 "subjectuuid": "12345678-1234-1234-1234-123456789012",
                 "credtype": 1,
                 "privatedata":{
-                    "data":"1XXXXAAAAAAAAAYY",
+                    "data":"Client2_XXXXAAAAAAAAAYY",
                     "encoding": "oic.sec.encoding.raw"
                 }
             }],

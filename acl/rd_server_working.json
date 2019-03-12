@@ -1,0 +1,174 @@
+{
+	"acl": {
+		"aclist2": [
+			{
+				"aceid": 1,
+				"subject": {
+					"conntype": "anon-clear"
+				},
+				"resources": [
+					{
+						"href": "/oic/res"
+					},
+					{
+						"href": "/oic/d"
+					},
+					{
+						"href": "/oic/p"
+					},
+					{
+						"href": "/oic/sec/doxm"
+					}
+				],
+				"permission": 2
+			},
+			{
+				"aceid": 2,
+				"subject": {
+					"conntype": "auth-crypt"
+				},
+				"resources": [
+					{
+						"href": "/oic/res"
+					},
+					{
+						"href": "/oic/d"
+					},
+					{
+						"href": "/oic/p"
+					},
+					{
+						"href": "/oic/sec/doxm"
+					}
+				],
+				"permission": 2
+			},
+			{
+				"aceid": 3,
+				"subject": {
+					"conntype": "anon-clear"
+				},
+				"resources": [
+					{
+						"href": "/oic/rd"
+					}
+				],
+				"permission": 31
+			},
+			{
+				"aceid": 4,
+				"subject": {
+					"conntype": "auth-crypt"
+				},
+				"resources": [
+					{
+						"href": "/oic/rd"
+					}
+				],
+				"permission": 31
+			},
+			{
+				"subject": {
+					"conntype": "anon-clear"
+				},
+				"resources": [
+					{
+						"href": "/a/93a22b47-02da-4151-9cb2-f6a2cba56330-xyzzy"
+					},
+					{
+						"href": "/a/93a22b47-02da-4151-9cb2-f6a2cba56330"
+					},
+					{
+						"href": "/direct"
+					},
+					{
+						"href": "/target-resource"
+					},
+					{
+						"href": "/disable-presence"
+					},
+					{
+						"href": "/some/new/resource"
+					}
+				],
+				"permission": 31,
+				"aceid": 5
+			},
+			{
+				"subject": {
+					"conntype": "auth-crypt"
+				},
+				"resources": [
+					{
+						"href": "/a/93a22b47-02da-4151-9cb2-f6a2cba56330-xyzzy"
+					},
+					{
+						"href": "/a/93a22b47-02da-4151-9cb2-f6a2cba56330"
+					},
+					{
+						"href": "/direct"
+					},
+					{
+						"href": "/target-resource"
+					},
+					{
+						"href": "/disable-presence"
+					},
+					{
+						"href": "/some/new/resource"
+					}
+				],
+				"permission": 31,
+				"aceid": 6
+			}
+		],
+		"rowneruuid": "b4facb6a-6ffe-41e0-9022-743c72aaa98a"
+	},
+	"pstat": {
+		"dos": {
+			"s": 3,
+			"p": false
+		},
+		"isop": true,
+		"rowneruuid": "b4facb6a-6ffe-41e0-9022-743c72aaa98a",
+		"cm": 0,
+		"tm": 0,
+		"om": 4,
+		"sm": 4
+	},
+	"doxm": {
+		"oxms": [
+			0
+		],
+		"oxmsel": 0,
+		"sct": 1,
+		"owned": true,
+		"deviceuuid": "b4facb6a-6ffe-41e0-9022-743c72aaa98a",
+		"devowneruuid": "b4facb6a-6ffe-41e0-9022-743c72aaa98a",
+		"rowneruuid": "b4facb6a-6ffe-41e0-9022-743c72aaa98a"
+	},
+	"cred": {
+		"creds": [
+			{
+				"credid": 1,
+				"subjectuuid": "6eea77f9-e391-4503-8f12-dd19031460a6",
+				"credtype": 1,
+				"privatedata": {
+					"data": "AAAAAAAAAAAAAAAA",
+					"encoding": "oic.sec.encoding.raw"
+				},
+				"period": "20150630T060000/20990920T220000"
+			},
+			{
+				"credid": 2,
+				"subjectuuid": "541b9bfc-1f1b-4172-a450-489ba8a603da",
+				"credtype": 1,
+				"privatedata": {
+					"data": "AAAAAAAAAAAAAAAA",
+					"encoding": "oic.sec.encoding.raw"
+				},
+				"period": "20150630T060000/20990920T220000"
+			}
+		]
+	}
+}
