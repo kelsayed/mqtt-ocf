@@ -1,16 +1,18 @@
-# mqtt-ocf
+# ble-ocf-bridge
 
 ## Description
 
-This project provides a node.js based gateway for interconnecting MQTT publishers/subscribers to OCF based clients.  It is based on the node.js [mosca](https://github.com/mcollina/mosca) MQTT broker and [iotivity-node](https://github.com/intel/iotivity-node) Iotivity implementation in node.js. In summary, an OCF resource is created for each identified MQTT topic at the MQTT broker. Then the MQTT topic and corresponding OCF resource are considered as one logical entity. The communication among MQTT and OCF clients is bi-directional:
+This project provides a node.js based bridge for interconnecting devices with Bluetooth low energy (BLE) profiles to OCF based clients.  It is based on [iotivity-node](https://github.com/intel/iotivity-node) Iotivity implementation in node.js and [noble](https://github.com/noble/noble) BLE central library. 
 
-- A MQTT publisher updating a specific MQTT topic will push the update to the MQTT subscribers and update the the resource value for the corresponding OCF resource. Subscribing OCF clients (e.g. observer) or OCF clients performing a GET shall then get the updated resource value. 
-- An OCF client performing a POST operation on the OCF resource will cause an update to be pushed to the MQTT subscribers.
+In summary, an OCF resource is created for each identified discovered BLE peripheral device hosting one or more supported GATT service/profile. The OCF resource is then optionally registered with the OCF resource directory (RD).
 
-Currently, **all OCF resource/mqtt topic data is treated as strings**. Future versions should resolve this issue.
-
-Future versions shall also consider the case of offering an OCF service on some proper resource (say /oic/mqttgw) that will enable interested OCF servers to create MQTT topics corresponding to their resources on the gateway. The gateway shall then subscribe to the registered OCF resources and publish the updated resource values on the corresponding MQTT topic.
- 
+The implementation has the following features:
+1. Supports multiple BLE devices.
+2.	Supports multiple GATT profiles per BLE device
+3.	Support different types of BLE GATT profiles. The bridge currently supports the BLE heart rate service and battery service profiles.
+4.	Support notifications and read operations of the BLE characteristics of the corresponding profiles. Write operation is straight-forward extension left for future work.
+5.	Generate a unique OCF resource for each BLE device and discovered profile on the device with proper resource type.
+6.	Optionally register the created resources with the OCF RD.
 
 ## Installation
 
@@ -19,15 +21,15 @@ This package has been tested on Linux only. Should run similarly on  OSX. Since 
 For installation do the following:
 
 1. Make sure [node](https://nodejs.org) version 4.2.6 or later is up and running (It should actually work on older versions, but this is the version that I tested it with). This means that:
-	1. the command `node -v` reports a version  4.2.6 or later
-	1. the directory in which the `node` binary can be found is listed in the `PATH` environment variable.
+  1. the command `node -v` reports a version  4.2.6 or higher
+  1. the directory in which the `node` binary can be found is listed in the `PATH` environment variable.
 1. Install the following packages, which your distribution should provide:
    1. unzip, scons (version 2.51), git, make, autoconf
    1. Development headers for libuuid, and glib2
    1. A C compiler and a C++ compiler (gcc-4.7 or later)
 1. Clone this repository.
-1. cd `mqtt-ocf`
-1. Run `npm install`. This should download iotivity-node, mqtt, and mosca packages and their dependencies. Downloading iotivity-node installs IoTivity library. More details can be found in the [iotivity-node](https://github.com/intel/iotivity-node) package repository.
+1. cd `ble-ocf-bridge`
+1. Run `npm install`. This should download the iotivity-node and noble packages and their dependencies. Downloading iotivity-node installs IoTivity library. More details can be found in the [iotivity-node](https://github.com/intel/iotivity-node) package repository.
 
 ### Some Useful Installation Commands on Ubunto-based Linux Systems
 On systems like Ubunto and Mint, the following commands can be handy to install some of the tools/libraries needed by IoTivity. Still not every things but it should be helpful.
@@ -36,105 +38,101 @@ On systems like Ubunto and Mint, the following commands can be handy to install 
 1. libuuid: `sudo apt-get install uuid-dev`
 1. sqlite3: `sudo apt-get install sqlite3 libsqlite3-dev`
 1. autoconf, autotools-dev, automake: </br>
+
   `sudo apt-get install autoconf`</br>
   `sudo apt-get install autotools-dev`</br>
   `sudo apt-get install automake`
 
-Note that I have expeienced that new versions of Ubunto/Mint can result in IoTivity 1.3.x (which IoTivity-node uses) compilation errors. This system was tested on Linux Mint 18.1. 
+Note that I have experienced that new versions of Ubunto/Mint can result in IoTivity 1.3.x (which IoTivity-node uses) compilation errors. Current work to upgrade Iotivity-Node to work with IoTivity 2.0.0 should resolve these issues. The system was tested on Linux Mint 18.1.
 
 
 ## Detailed Description and Flows
-The package consists of one module the  mqtt-ocf.js which is called the "server". The mqtt-ocf server is comprised of two logical entities: An MQTT Broker and an OCF Proxy. There are three additional folders:
+The package consists of one module the ble-ocf-bridge.js which is called the "bridge". There are additional shell scripts used to facilitate the execution of the bridge and/or its testing. There are three additional folders:
 
-- js: this contains helper scripts comprising mqtt publishers and subscribers and OCF observer and post clients. 
-- acl: this contains provisioning and ACL json files and utility to install the security configuration files for OCF.
+- js: this contains helper node.js scripts comprising OCF observer and get clients. It also contains a node.js based RD server.
+- acl: this contains the security/credentials/ACL json files and utility to install the security configuration files.
 - images: some PNG images used for this Readme file. 
 
-The package runs as a full-fledged MQTT broker. MQTT publishers and subscribers are configured with the proper IP address of the MQTT broker (as usual). Current version has a limitation that **MQTT transactions are not secured**. This will be added in future releases. The mqtt-ocf MQTT Broker has special handlers for MQTT publisher and subscriber requests that perform the necessary transactions to create/update OCF resources hosted in the OCF Proxy.
+The node.js implementation is fully based on Javascript asynchronous events handling concept to be able to handle the multiple events resulting from the connected BLE devices notifications, OCF client-side network events, and timer-triggered events in the node.js code. The node.js main asynchronous flow is described below. Note that once initialization steps 1 and 2 are  done, the rest of the steps are asynchronous events (some of these events are dependent on each other).
 
-### MQTT Publisher Initiated Flow
+1.	Initialize IoTivity stack loading the required security credentials. 
+2.	Load BLE Noble and start scanning for BLE devices. All subsequent steps are event-based triggered by an external event.
+3. When a BLE device is found, connect to it and discover the supported profiles.
+4.	If supported profile found, then discover its characteristics. 
+	1.	If characteristic found, then proceed to create OCF resource unique for the BLE device and characteristic. For example, If the peripheral id is cec2aa5def41 and the service UUID is 180d (heart rate service) then the URI of the OCF resource is /a/hrm/cec2aa5def41/180d. This is guaranteed to be unique as peripheral IDs are unique among devices and service IDs are unique within a device. 
+	2.	Link the BLE characteristic with the OCF resources. This is done via the array `oicResources`. This is an associative Javascript array indexed by the unique resource URI and holds the BLE service and peripheral UUID as well as the data coming from the BLE characteristic associated with the resource.
+	3.	Optionally publish the created OCF resource to the RD.
+	4.	If BLE characteristic supports notification, register the BLE peripheral at the ble-ocf-bridge  as a receiver for notification. 
+	5.	If BLE characteristic does not support notification, then construct a periodic reader that reads the characteristic periodically.
+5.	When BLE notification is received or the periodic reader reads the characteristic value, update the resource data and push the update to OCF subscribers (if any).
+6.	When receiving OCF operation (e.g. GET) on the resource, handle it as a normal OCF operation using freshest data from the `oicResources` array.
+7.	If an OCF operation contain an observe request, add the OCF client requesting the observ to the observers list of the resource. 
+8.	If connected BLE device is disconnected, delete the associated resources. </br> 
+**TODO**: This should also remove the resources from the RD database.
 
-A publisher publishing on a MQTT topic for the first time will cause the mqtt-ocf server to create an OCF resource and a virtual publisher to handle updates from the OCF side to the MQTT side. The OCF resource value will be kept updated with all future publish requests. Subscribing MQTT clients will be pushed with the values as usual with MQTT operation. So, the existence of OCF resource is totally transparent. However, an OCF client can post updates to the OCF resource which will also cause an update in the MQTT topic and get pushed to the MQTT subscribers. The MQTT subscribers are not aware whether the update is via a MQTT publisher or an OCF client. This is depicted in the following figure. Note that the modules MQTT_Broker and OCF_Proxy are the entities comprising the  mqtt_ocf server. 
 
 
-
-![MQTT_PUB](./Images/MQTT_PUB.png) 
-
-### MQTT Subscriber Initiated Flow
-
-The system also handles the case when a MQTT subscriber send a subscribe request to a new topic. This is less likely as typically a subscriber subscribes to an already existing MQTT topic. However, typically MQTT brokers do not reject such requests and keep the topic available for potential future publishers. Here, the mqtt-ocf server creates the OCF resource and an internal virtual publisher client. As in the previous case, transparent update to the MQTT topic and its associated OCF resource is achieved. The OCF client can GET/Observe OR Post to the OCF resource which reflects the corresponding value from/to the MQTT topic. 
-
-
-
-![MQTT_Sub](./Images/MQTT_Sub.png)
 
 ### Examples
 
-The JavaScript examples are located in [js/](./js/) . 
+The node.js JavaScript examples are located in [js/](./js/) . 
 
-#### Setting the OCF Provisioning and Security Credentials
+#### Setting the OCF  Security Credentials
 
-In order to be able to run the mqtt-ocf server, all OCF transactions must be secured. mqtt-ocf uses the simplest type of security authentication which is the usage of pre-shared keys (PSKs). The package provide example json files that contain proper credentials for the mqtt-ocf server script and the multiple clients that are used to demonstrate the package. Currently there are three json files:
+In order to be able to run the ble-ocf bridge, all OCF transactions must be secured. Currently, the ble-ocf-bridge uses the simplest type of security authentication which is the usage of pre-shared keys (PSKs). The package provides example json files that contain proper credentials for the ble-ocf-bridge script and the multiple clients that are used to demonstrate the package. Currently there are three json files:
 
-1. working-server.json: This has ACL entries for the resources created for the  OCF proxy server and has wild card entries for those unknown resources that will be created as MQTT topics are added by MQTT transactions. It also has credentials for two clients with PSK credentials. 
-2. working-client.json: An OCF client credential file with proper PSK to be able to access the mqtt-ocf server. 
-3. working-client2.json: Identical to 2 but with a different Device UUID.
+1. working-server.json: This has ACL entries for the resources created for the  ble-ocf bridge and has wild card entries for those unknown resources that will be created as BLE devices are discovered. It contains credentials needed to access the RD-server. It also contains credentials for two (test/demo) clients with PSK credentials. 
+2. rd-server.json: This has ACL entries for the resource directory and clients' credentials (e.g. as in  working-server.json) allowed to access the RD.
+3. working-client.json: An OCF client credential file with proper PSK to be able to access the ble-ocf bridge. 
+4. working-client2.json: Identical to working-client.json but with a different Device UUID.
 
 When operated with these JSON files, all OCF devices are considered already provisioned and owned. This is not a limitation as any other OCF provisioning model can be supported by simply changing the security/provisioning json files. Interested readers should consult Iotivity wiki guide on [provisioning](https://wiki.iotivity.org/provisioning) and the [presentation](https://openconnectivity.org/wp-content/uploads/2018/06/4.-Security-Introduction-Architecture.pdf) by Nathan Heldt-Sheller on OCF security. 
 
-To run the examples, the first thing we need to do is setup the security and provisioning credentials. Iotivity-node stores security-related information for a given script in a pre-defined directory. It does so by creating a directory `${HOME}/.iotivity-node`. Thereunder, it creates directories whose name is the sha256 checksum of the absolute path of the given script and the security credential file is named `oic_svr_db.dat`. To facilitate this job, we provide a shell script that can be used to automate this job in the acl folder called the `setup_sec_json.bash`. 
+To run the examples, the first thing we need to do is setup the security and provisioning credentials. Iotivity-node stores security-related information for a given script in a pre-defined directory. It does so by creating a directory `${HOME}/.iotivity-node`. Thereunder, it creates directories whose name is the sha256 checksum of the absolute path of the given node.js script and the security credential file is named `oic_svr_db.dat`. To facilitate this job, we provide a shell script that can be used to automate this job in the acl folder called`setup_sec_json.bash`. 
 
-Below we show how to setup the security credentials for mqtt-ocf. First, make sure that  `setup_sec_json.bash`has execute permission. If not do a `chmod 755 setup_sec_json.bash`.
+Below we show how to setup the security credentials for ble-ocf-bridge. First, make sure that  `setup_sec_json.bash`has execute permission. If not do a `chmod 755 setup_sec_json.bash`.
 
-1. In the package root directory where mqtt-ocf.js is found, issue the following command:
+1. In the package root directory where ble-ocf-bridge.js is found, issue the following command:
 
-    `acl/setup_sec_json.bash  mqtt-ocf.js  acl/working-server.json`
+    `acl/setup_sec_json.bash  ble-ocf-bridge.js  acl/working-server.json`</br>
+    `acl/setup_sec_json.bash  rd-server.js  acl/rd-server.json`</br>
 
-2. cd js and issue the following commands and repeat for the remaining clients that you want to test with. We mainly demonstrate with `client-arg.observe.js`  and `client.periodicput.coaps.js`.
+2. cd js and issue the following commands and repeat for the remaining clients that you want to test with. We mainly demonstrate with `client-arg.observe.js`  and `client.get.coaps.js`</br>
+ (**Update get client info**).
 
    a-  `../acl/setup_sec_json.bash  client-arg.observe.js  ../acl/working-client.json`
 
-   b-  `../acl/setup_sec_json.bash  client.periodicput.coaps.js  ../acl/working-client2.json`
+   b-  `../acl/setup_sec_json.bash  client.get.coaps.js  ../acl/working-client2.json`
 
 You will now be ready to move to the next step. 
 
 #### Execution 
 
-First make sure no firewall is running (or one is properly configured to allow MQTT and iotivity-related traffic and especially multicast traffic) on the machine(s) where these applications are running.
+First make sure no firewall is running (or one is properly configured to allow iotivity-related traffic and especially multicast traffic) on the machine(s) where these applications are running.
 
-1. Go to the root directory of `mqtt-ocf.js`, open a shell terminal, and execute </br> 
-`node mqtt-ocf.js` </br>
-OR if interested in watching closely what is going on then </br>
-`NODE_DEBUG=ocf_mqtt node mqtt-ocf.js` </br>
-   Don't ask me why the `ocf_mqtt` identifier is used, just how it was started in the `debuglog` statements.   Can be changed effortlessly. 
+The demonstration requires nodes supporting BLE with HRS and BAS profiles. I have used Nodic NRF modules programmed with Nordik SDK. One node supports HRS and BAS profile and the second supports blood pressure monitor (BPM) and BAS. The machine used to run the ble_ocf_bridge had an Intel module with BLE v4.2 running Bluez 5.3  stack.
 
-2. Now `cd js`. Each of the following will need its own terminal or tab. 
+1. Go to the root directory of `ble-ocf-bridge.js`, open a shell terminal, and execute </br> 
+   `node  js/rd-server.js`</br>
+    in case registration with RD is required
+  2. Run the BLE-OCF-Bridge by issuing
+  `sudo node ble-ocf-bridge.js 1` </br>
+  use 1 to register created resources with RD server, 0 for not using RD </br>
+  3. OR if interested in watching closely what is going on then use the following shell script</br>
+  `demo_ble_bridge.sh` </br>
+  Edit the script to turn on/off registering with RD server.
 
-3. Issue the first MQTT publisher  by issuing`node pub.js`. This publishes a topic called `LEDToggle`. The mqtt-ocf server creates the OCF resource `/a/mqtt/LEDToggle`
+4. Now turn on the NRF modules or other BLE modules one at a time. The bridge should immediately discover both devices and create multiple resources. My two devices had a UUID of cec2aa5def41 and ef4eb89335f7 respectively. If the bridge does not discover all devices, better turn on one device at a time. This really depends on how good your BLE subsystem is. The resources created for my two devices were:
+	  1.  /a/hrm/cec2aa5def41/180d: 180d is UUID of heart rate service
+	  2.  /a/bas/cec2aa5def41/180f: 180f is UUID of battery service
+	  3. /a/hrm/ef4eb89335f7/180d: 180d is UUID of heart rate service
 
-4. Issue MQTT subscriber  by issuing `node sub.js` . This subscribes to the `LEDToggle` topic. You should be starting to see the logs of the pushed updates from the publisher. 
+5. Now, it is time to start some OCF clients. Issue an observer client  by issuing </br> 
+   `node  js/client-arg.observe.js /a/hrm/cec2aa5def41/180d 100` </br>
+   what this does is observing the `/a/hrm/cec2aa5def41/180d` resource for 100 times. You can run this again with different resources (e.g. the /a/bas/cec2aa5def41/180f ). The OCF client should then get the same updates as any BLE central device connected to the peripheral. 
 
-5. Issue the second MQTT publisher  by issuing `node pub2.js`. This publishes a topic called `TestMQTT`. The mqtt-ocf server creates the OCF resource `/a/mqtt/TestMQTT`.
 
-6. Issue the second MQTT subscriber by issuing `node sub2.js`. This subscribes to the `TestOcfTopic` topic. No MQTT publisher is publishing to this topic. Nothing happens here in the subscriber log. However, the `mqtt-ocf` server creates the resource `/a/mqtt/TestOcfTopic`. 
-
-7. Now, time to start some OCF clients. Issue an observer client  by issuing </br> 
-
-   `node  client-arg.observe.js /a/mqtt/LEDToggle 100` </br>
-
-   what this does is observing the `/a/mqtt/LEDToggle` resource for 100 times. You can run this again with different resources (e.g. the /a/mqtt/TestMQT ). You should then get the same updates as any MQTT subscriber to the topic. 
-
-8. Start two OCF Post clients by issuing the commands below. Note that the post client generates random strings taking the value from `OCFTestRandomString000` to `OCFTestRandomString999` </br>
-
-   `node  client.periodicput.coaps.js /a/mqtt/LEDToggle 100` </br>
-   
-   The first MQTT subscriber shall now get updates from both the MQTT publisher and OCF Post client. Then create another post client </br>
-   
-   `node  client.periodicput.coaps.js /a/mqtt/TestOcfTopic 100` </br>
-
-   The second MQTT subscriber shall now get the updates posted by the OCF Post client. 
-
-That's it, Voila :-) **We have now a fully versatile system that interconnects MQTT and OCF Worlds!**
+That's it, Voila :-) **We now have a fully versatile system that interconnects BLE and OCF Worlds!**
 
 A handy tool that helped me in the development was the [OCFSecure/client](https://github.com/iotivity/iotivity/blob/master/examples/OCFSecure/client.c) program of the IoTivity package. 
 
@@ -145,5 +143,7 @@ This work is part of the [Campie Project](http://campie.cu.edu.eg) funded by the
 Would like to ACK the tiresome efforts of [Gabriel Schulhof](https://github.com/gabrielschulhof) who really helped me a lot understand node.js and iotivity-node. 
 
 Would also like to ACK Nathan Heldt-Sheller for good insights on OCF security. 
+
+
 
 
