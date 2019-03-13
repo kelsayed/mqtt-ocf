@@ -66,7 +66,7 @@
                 "subjectuuid": "32323232-3232-3232-3232-323232323232",
                 "credtype": 1,
                 "privatedata":{
-                    "data":"Client1_AAAAAAAAAAAAAAAA",
+                    "data":"AAAAAAAAAAAAAAAA",
                     "encoding": "oic.sec.encoding.raw"
                 }
             },
@@ -75,16 +75,7 @@
                 "subjectuuid": "87654321-3232-3232-3232-323232323232",
                 "credtype": 1,
                 "privatedata":{
-                    "data":"Client2_XXXXAAAAAAAAAYY",
-                    "encoding": "oic.sec.encoding.raw"
-                }
-            },
-			{
-                "credid": 3,
-                "subjectuuid": "34343434-3434-3434-3434-343431313131",
-                "credtype": 1,
-                "privatedata":{
-                    "data":"RDServ_ABCABCABCABC",
+                    "data":"1XXXXAAAAAAAAAYY",
                     "encoding": "oic.sec.encoding.raw"
                 }
             }],

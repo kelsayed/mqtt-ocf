@@ -1,7 +1,7 @@
 {
-  "name": "ble-ocf-bridge",
+  "name": "mqtt-ocf",
   "version": "1.0.0",
-  "description": "A BLE to OCF Bridge System that transparently interrconnects BLE devices with OCF clients",
+  "description": "An MQTT to OCF Gateway System that transparently interrconnects MQTT subsribers/publishers with OCF clients",
   "main": "index.js",
   "engines": {
     "node": ">4.2"
@@ -11,7 +11,7 @@
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/kelsayed/ble-ocf-bridge.git"
+    "url": "git+https://github.com/kelsayed/mqtt-ocf.git"
   },
   "keywords": [
 	"iot",
@@ -25,11 +25,12 @@
   "author": "Khaled Elsayed",
   "license": "Apache-2.0",
   "bugs": {
-    "url": "https://github.com/kelsayed/ble-ocf-bridge/issues"
+    "url": "https://github.com/kelsayed/mqtt-ocf/issues"
   },
-  "homepage": "https://github.com/kelsayed/ble-ocf-bridge#ReadMe",
+  "homepage": "https://github.com/kelsayed/mqtt-ocf#ReadMe",
   "dependencies": { 
     "iotivity-node": ">=1.3.1-2",
-    "noble": ">=1.9.1"
+    "mosca": ">=2.8.3",
+    "mqtt": ">=2.18.8"
   }
 }

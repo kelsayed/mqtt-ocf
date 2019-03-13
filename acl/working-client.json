@@ -51,7 +51,7 @@
                 "subjectuuid": "12345678-1234-1234-1234-123456789012",
                 "credtype": 1,
                 "privatedata":{
-                    "data":"Client1_AAAAAAAAAAAAAAAA",
+                    "data":"AAAAAAAAAAAAAAAA",
                     "encoding": "oic.sec.encoding.raw"
                 }
             },
@@ -61,7 +61,7 @@
                 "credtype": 1,
                 "period": "20150630T060000/20990920T220000",
                 "privatedata": {
-                    "data": "Client1_XXXXAAAAAAAAAYY",
+                    "data": "CCCCCCCCCCCCCCCC",
                     "encoding": "oic.sec.encoding.raw"
                 }
             }],

@@ -1,3 +1,3 @@
 exports.printMsg = function() {
-  console.log("ble-ocf-bridge is loaded");
+  console.log("mqtt-ocf is loaded");
 }
